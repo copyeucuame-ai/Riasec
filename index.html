@@ -1,0 +1,969 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trắc nghiệm Hướng nghiệp RIASEC</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .bar-chart {
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-around;
+            height: 400px;
+            padding: 20px;
+            gap: 10px;
+            background: rgba(255,255,255,0.05);
+            border-radius: 12px;
+            position: relative;
+        }
+        .bar-item {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            height: 100%;
+            justify-content: flex-end;
+        }
+        .bar {
+            width: 100%;
+            background: linear-gradient(180deg, var(--bar-color) 0%, var(--bar-color-dark) 100%);
+            border-radius: 8px 8px 0 0;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 18px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+        }
+        .bar:hover {
+            opacity: 0.8;
+            transform: translateY(-5px);
+        }
+        .likert-option {
+            transition: all 0.2s ease;
+        }
+        .likert-option:hover {
+            transform: scale(1.05);
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script>
+        const SHEETDB_API_URL = 'https://sheetdb.io/api/v1/l3w3hhxab5liu';
+
+        const state = {
+            page: 'intro',
+            answers: {},
+            results: null,
+            loading: false,
+            careerGoals: {
+                // I. Thông tin cá nhân
+                name: '', 
+                class: '', 
+                school: '',
+                testDate: '',
+                
+                // II. Kết quả khám phá
+                riasecTop: [],
+                personality: [],
+                favoriteSubjects: '',
+                activities: '',
+                
+                // III. Nghề nghiệp quan tâm
+                careerInterest: '',
+                whyChoose: [],
+                whyChooseOther: '',
+                strengths: '',
+                improvements: '',
+                
+                // IV. Kế hoạch tương lai
+                actionDate: '',
+                proudMoment: '',
+                
+                // Email phụ huynh
+                parentEmail: ''
+            }
+        };
+
+        const questions = [
+            { id: 1, text: "Tôi thích làm việc với máy móc, dụng cụ, sửa chữa đồ vật.", category: "R" },
+            { id: 2, text: "Tôi thích tham gia các hoạt động ngoài trời, thể thao, kỹ thuật thực hành.", category: "R" },
+            { id: 3, text: "Tôi vui khi lắp ráp đồ chơi, mô hình, hoặc sửa đồ trong nhà.", category: "R" },
+            { id: 4, text: "Tôi hứng thú với nghề nghiệp cần kỹ năng thực hành (thợ, kỹ sư).", category: "R" },
+            { id: 5, text: "Tôi thích khám phá công cụ kỹ thuật mới (điện, máy, robot).", category: "R" },
+            
+            { id: 6, text: "Tôi thích tìm hiểu nguyên nhân của các hiện tượng tự nhiên.", category: "I" },
+            { id: 7, text: "Tôi thích đọc sách khoa học, làm thí nghiệm nhỏ để khám phá.", category: "I" },
+            { id: 8, text: "Tôi thích suy nghĩ, phân tích, tìm lời giải cho vấn đề.", category: "I" },
+            { id: 9, text: "Tôi thích nghiên cứu, đặt câu hỏi 'tại sao' và tìm bằng chứng.", category: "I" },
+            { id: 10, text: "Tôi tò mò về cách mọi thứ hoạt động và muốn tìm hiểu sâu hơn.", category: "I" },
+            
+            { id: 11, text: "Tôi thích vẽ, làm đồ thủ công, thiết kế sáng tạo.", category: "A" },
+            { id: 12, text: "Tôi cảm thấy vui khi tạo ra bức tranh, bài hát hoặc câu chuyện.", category: "A" },
+            { id: 13, text: "Tôi muốn làm những việc liên quan đến nghệ thuật, sân khấu.", category: "A" },
+            { id: 14, text: "Tôi thích thiết kế trang trí, phối màu, sáng tạo hình ảnh.", category: "A" },
+            { id: 15, text: "Tôi muốn thử làm sản phẩm thủ công để trưng bày.", category: "A" },
+            
+            { id: 16, text: "Tôi thích hướng dẫn và giúp đỡ bạn bè khi họ học.", category: "S" },
+            { id: 17, text: "Tôi thích làm việc nhóm để chăm sóc, hỗ trợ người khác.", category: "S" },
+            { id: 18, text: "Tôi sẵn sàng lắng nghe và tư vấn khi người khác gặp khó khăn.", category: "S" },
+            { id: 19, text: "Tôi thích tham gia hoạt động cộng đồng, giúp trẻ nhỏ hoặc người già.", category: "S" },
+            { id: 20, text: "Tôi thích trao đổi, lắng nghe và giải bài toán cuộc sống của người khác.", category: "S" },
+            
+            { id: 21, text: "Tôi thích thuyết trình, thuyết phục hoặc tổ chức sự kiện nhỏ.", category: "E" },
+            { id: 22, text: "Tôi muốn quản lý một dự án nhỏ hoặc bán hàng khi có dịp.", category: "E" },
+            { id: 23, text: "Tôi hay có ý tưởng bắt đầu một hoạt động hoặc dự án nhỏ.", category: "E" },
+            { id: 24, text: "Tôi tự tin khi phải thuyết phục mọi người làm theo ý mình.", category: "E" },
+            { id: 25, text: "Tôi có mong muốn thử lập một gian hàng hoặc bán sản phẩm nhỏ.", category: "E" },
+            
+            { id: 26, text: "Tôi thích làm việc theo quy tắc, sắp xếp giấy tờ hoặc lập danh sách.", category: "C" },
+            { id: 27, text: "Tôi cảm thấy an tâm khi công việc rõ ràng, có quy trình.", category: "C" },
+            { id: 28, text: "Tôi thích làm công việc cần độ chính xác và theo hướng dẫn chi tiết.", category: "C" },
+            { id: 29, text: "Tôi thích công việc hành chính, sổ sách, lưu trữ tài liệu.", category: "C" },
+            { id: 30, text: "Tôi thích làm việc có trình tự, thực hiện theo danh sách công việc.", category: "C" }
+        ];
+
+        const likertScale = [
+            { value: 1, label: "Rất không thích", color: "from-red-500 to-red-600" },
+            { value: 2, label: "Không thích", color: "from-orange-500 to-orange-600" },
+            { value: 3, label: "Bình thường", color: "from-gray-500 to-gray-600" },
+            { value: 4, label: "Thích", color: "from-blue-500 to-blue-600" },
+            { value: 5, label: "Rất thích", color: "from-green-500 to-green-600" }
+        ];
+
+        const categoryInfo = {
+            R: { 
+                name: "Realistic - Thực tế", 
+                shortName: "Thực tế", 
+                color: "#3B82F6", 
+                colorDark: "#2563EB", 
+                icon: "🔵", 
+                description: "Bạn có xu hướng thích làm việc với máy móc, công cụ, thiết bị, công nghệ, hoạt động ngoài trời hoặc quy trình thực hành rõ ràng. Bạn học tốt hơn khi được trải nghiệm và thao tác trực tiếp.",
+                advice: [
+                    "Hãy ưu tiên những hoạt động trải nghiệm thực tế: làm thí nghiệm, chế tạo, mô hình STEM, robot, cơ khí, thể thao, nông nghiệp công nghệ cao.",
+                    "Tập rèn luyện sự kiên trì, kỹ năng sử dụng công cụ, độ chính xác và khả năng làm việc độc lập.",
+                    "Chủ động tham gia các câu lạc bộ STEM, robotics, sửa chữa -- DIY, trải nghiệm thực tế ngoài trời."
+                ],
+                careers: "Kỹ thuật -- công nghệ, cơ khí -- ô tô, kỹ thuật điện -- điện tử, công nghệ nông nghiệp, logistic -- vận hành, cảnh sát -- quân đội, huấn luyện thể thao, hướng dẫn du lịch trải nghiệm."
+            },
+            I: { 
+                name: "Investigative - Nghiên cứu", 
+                shortName: "Nghiên cứu", 
+                color: "#8B5CF6", 
+                colorDark: "#7C3AED", 
+                icon: "🟣", 
+                description: "Bạn mạnh về phân tích, khám phá, đặt câu hỏi, suy luận, tìm hiểu nguyên nhân -- kết quả. Bạn học tốt thông qua tư duy logic và nghiên cứu khoa học.",
+                advice: [
+                    "Tập trung phát triển kỹ năng đọc hiểu, nghiên cứu, ghi chép và trình bày kết quả khoa học.",
+                    "Tham gia các cuộc thi khoa học, nghiên cứu nhỏ, STEM, dự án AI -- dữ liệu dành cho học sinh.",
+                    "Luôn duy trì thói quen hoài nghi tích cực: 'Tại sao lại như vậy?' -- 'Nếu thay đổi điều này thì kết quả ra sao?'"
+                ],
+                careers: "Bác sĩ -- y khoa, dược -- sinh học, khoa học tự nhiên, phân tích dữ liệu -- trí tuệ nhân tạo, công nghệ thông tin, kiểm định chất lượng, nghiên cứu khoa học, tâm lý học."
+            },
+            A: { 
+                name: "Artistic - Nghệ thuật", 
+                shortName: "Nghệ thuật", 
+                color: "#EC4899", 
+                colorDark: "#DB2777", 
+                icon: "🔴", 
+                description: "Bạn có khả năng thẩm mỹ, sáng tạo, cảm xúc nghệ thuật, linh hoạt trong cách biểu đạt ý tưởng, không thích sự gò bó cứng nhắc.",
+                advice: [
+                    "Tạo không gian để sáng tạo: viết, vẽ, diễn xuất, hát, thiết kế poster, video clip, animation, UI/UX.",
+                    "Rèn tính kiên trì và kỹ năng quản lý thời gian --- vì cảm hứng rất quan trọng nhưng hoàn thành sản phẩm mới là chìa khóa.",
+                    "Tham gia thử thách: làm blogger học đường, thiết kế, vẽ minh hoạ, làm kênh tiktok kiến thức."
+                ],
+                careers: "Thiết kế đồ họa -- UI/UX, kiến trúc -- mỹ thuật, truyền thông -- báo chí, nhiếp ảnh -- dựng phim, âm nhạc -- sân khấu, marketing sáng tạo, thời trang, sáng tạo nội dung."
+            },
+            S: { 
+                name: "Social - Xã hội", 
+                shortName: "Xã hội", 
+                color: "#10B981", 
+                colorDark: "#059669", 
+                icon: "🟢", 
+                description: "Bạn thích giúp đỡ người khác, giao tiếp, lắng nghe, chia sẻ, làm việc nhóm, có sự đồng cảm cao.",
+                advice: [
+                    "Tập luyện kỹ năng giao tiếp, lắng nghe tích cực, quản lý cảm xúc và giải quyết xung đột.",
+                    "Tham gia tình nguyện, tư vấn bạn bè, dẫn chương trình trong các sự kiện, làm 'buddy support' cho lớp.",
+                    "Quan sát thêm đặc điểm tính cách để xác định phong cách nghề nghiệp phù hợp: hướng dẫn -- đào tạo / phục vụ cộng đồng / tâm lý."
+                ],
+                careers: "Giáo viên -- mentor -- trainer, y tá -- điều dưỡng -- chăm sóc sức khỏe, tâm lý -- công tác xã hội, du lịch -- hướng dẫn viên, nhân sự -- đào tạo, truyền thông cộng đồng."
+            },
+            E: { 
+                name: "Enterprising - Lãnh đạo", 
+                shortName: "Lãnh đạo", 
+                color: "#F59E0B", 
+                colorDark: "#D97706", 
+                icon: "🟠", 
+                description: "Bạn tự tin, thích thuyết phục, định hướng mục tiêu, khám phá cơ hội, dẫn dắt nhóm và tạo ảnh hưởng tới người khác.",
+                advice: [
+                    "Rèn kỹ năng thuyết trình, ra quyết định, quản lý dự án, quản lý thời gian và lập kế hoạch.",
+                    "Trải nghiệm sớm: bán hàng thử nghiệm, tổ chức hoạt động, làm dự án startup mini, làm trưởng nhóm.",
+                    "Luôn kết hợp tư duy thực tế + đạo đức nghề nghiệp để phát triển bền vững."
+                ],
+                careers: "Quản trị kinh doanh, marketing -- PR, tài chính -- ngân hàng, luật -- ngoại giao, chính trị -- quản lý nhà nước, kinh doanh -- khởi nghiệp, bất động sản."
+            },
+            C: { 
+                name: "Conventional - Quy tắc", 
+                shortName: "Quy tắc", 
+                color: "#6366F1", 
+                colorDark: "#4F46E5", 
+                icon: "🟡", 
+                description: "Bạn làm việc tốt với dữ liệu, con số, sắp xếp, quy trình, tài liệu, lập kế hoạch, thích công việc ổn định và chính xác.",
+                advice: [
+                    "Phát triển kỹ năng quản lý thời gian, sắp xếp dữ liệu, tin học văn phòng và ghi chép khoa học.",
+                    "Hãy thử tham gia việc quản lý hồ sơ lớp, thủ quỹ, hỗ trợ thống kê, làm bảng biểu, Excel hoặc Google Sheets.",
+                    "Rèn sự chủ động thay vì chỉ chờ hướng dẫn --- đó là điểm giúp bạn nổi bật trong nhóm C."
+                ],
+                careers: "Kế toán -- kiểm toán, thư ký -- văn phòng, quản trị dữ liệu, phân tích tài chính, hành chính -- nhân sự, logistics -- xuất nhập khẩu, thư viện -- lưu trữ thông tin."
+            }
+        };
+
+        const careerCombinations = {
+            'RIE': { title: 'Kỹ sư, Nhà nghiên cứu ứng dụng', desc: 'Phù hợp: Kỹ sư cơ khí, Kỹ sư điện, Nhà phát triển công nghệ' },
+            'RIC': { title: 'Kỹ thuật viên chuyên môn', desc: 'Phù hợp: Kỹ thuật viên y tế, Kiểm định viên, Kỹ thuật xây dựng' },
+            'RAE': { title: 'Thiết kế & Chế tác', desc: 'Phù hợp: Kiến trúc sư, Nhà thiết kế công nghiệp, Thợ thủ công cao cấp' },
+            'IRE': { title: 'Nghiên cứu khoa học ứng dụng', desc: 'Phù hợp: Nhà khoa học dữ liệu, Lập trình viên, Nhà phân tích hệ thống' },
+            'IAE': { title: 'Nghiên cứu & Sáng tạo', desc: 'Phù hợp: Nhà khoa học xã hội, Nhà nghiên cứu thị trường, Designer UX/UI' },
+            'IAS': { title: 'Khoa học xã hội & Giáo dục', desc: 'Phù hợp: Nhà tâm lý học, Nhà nghiên cứu giáo dục, Chuyên gia phát triển' },
+            'ISE': { title: 'Y tế & Tư vấn', desc: 'Phù hợp: Bác sĩ, Dược sĩ, Chuyên viên y tế cộng đồng' },
+            'AEI': { title: 'Sáng tạo nội dung & Marketing', desc: 'Phù hợp: Content creator, Marketing, Nhà thiết kế quảng cáo' },
+            'AES': { title: 'Nghệ thuật biểu diễn & Giảng dạy', desc: 'Phù hợp: Nghệ sĩ, Diễn viên, Giáo viên nghệ thuật' },
+            'ASE': { title: 'Truyền thông & Quan hệ công chúng', desc: 'Phù hợp: Nhà báo, MC, Chuyên viên PR' },
+            'SEI': { title: 'Quản lý nguồn nhân lực', desc: 'Phù hợp: HR Manager, Chuyên viên đào tạo, Tư vấn phát triển' },
+            'SEA': { title: 'Giáo dục & Đào tạo', desc: 'Phù hợp: Giáo viên, Giảng viên, Chuyên viên đào tạo doanh nghiệp' },
+            'SAI': { title: 'Chăm sóc sức khỏe cộng đồng', desc: 'Phù hợp: Y tá, Nhân viên xã hội, Tư vấn tâm lý' },
+            'EIR': { title: 'Quản lý dự án công nghệ', desc: 'Phù hợp: Project Manager IT, Giám đốc công nghệ, Business Analyst' },
+            'EIS': { title: 'Tư vấn & Phát triển kinh doanh', desc: 'Phù hợp: Tư vấn quản lý, Business Developer, Sales Manager' },
+            'EAS': { title: 'Kinh doanh & Marketing sáng tạo', desc: 'Phù hợp: Marketing Director, Event Manager, Brand Manager' },
+            'ECS': { title: 'Quản trị kinh doanh', desc: 'Phù hợp: Quản lý doanh nghiệp, CEO, Giám đốc điều hành' },
+            'CER': { title: 'Quản lý vận hành', desc: 'Phù hợp: Quản lý sản xuất, Logistics Manager, Supply Chain' },
+            'CEI': { title: 'Quản lý tài chính', desc: 'Phù hợp: Kế toán trưởng, Phân tích tài chính, Kiểm toán viên' },
+            'CSE': { title: 'Hành chính & Quản lý văn phòng', desc: 'Phù hợp: Trợ lý giám đốc, Office Manager, Thư ký' },
+            'CIE': { title: 'Phân tích dữ liệu & Thống kê', desc: 'Phù hợp: Data Analyst, Chuyên viên thống kê, QA/QC' }
+        };
+
+        function handleAnswer(questionId, value) {
+            state.answers[questionId] = value;
+            render();
+        }
+
+        function updateCareerGoal(field, value) {
+            state.careerGoals[field] = value;
+        }
+
+        function calculateResults() {
+            const scores = { R: 0, I: 0, A: 0, S: 0, E: 0, C: 0 };
+            const maxScores = { R: 25, I: 25, A: 25, S: 25, E: 25, C: 25 };
+            
+            questions.forEach(q => { 
+                if (state.answers[q.id]) {
+                    scores[q.category] += state.answers[q.id];
+                }
+            });
+
+            const percentageScores = {};
+            Object.keys(scores).forEach(key => {
+                percentageScores[key] = Math.round((scores[key] / maxScores[key]) * 100);
+            });
+
+            const chartData = Object.entries(scores).map(([key, value]) => ({
+                category: key,
+                name: categoryInfo[key].shortName,
+                score: value,
+                percentage: percentageScores[key],
+                color: categoryInfo[key].color,
+                colorDark: categoryInfo[key].colorDark
+            }));
+
+            const sortedScores = Object.entries(scores).sort((a, b) => b[1] - a[1]);
+            const top3 = sortedScores.slice(0, 3);
+            const riasecCode = top3.map(item => item[0]).join('');
+            
+            const careerMatch = careerCombinations[riasecCode] || careerCombinations[riasecCode.substring(0,2) + sortedScores[3][0]] || null;
+
+            state.results = { 
+                scores: scores,
+                percentageScores: percentageScores,
+                chartData: chartData,
+                topCategory: sortedScores[0][0], 
+                topScore: sortedScores[0][1],
+                top3Categories: top3,
+                riasecCode: riasecCode,
+                careerMatch: careerMatch,
+                sortedScores: sortedScores 
+            };
+            state.page = 'results';
+            render();
+        }
+
+        async function saveToGoogleSheets(data, sheetName) {
+            if (SHEETDB_API_URL === 'YOUR_SHEETDB_API_URL') {
+                console.warn('Chưa cấu hình API');
+                return false;
+            }
+            try {
+                state.loading = true;
+                render();
+                const url = SHEETDB_API_URL + '?sheet=' + sheetName;
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ data: [data] })
+                });
+                if (!response.ok) throw new Error('Failed');
+                return true;
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Có lỗi xảy ra!');
+                return false;
+            } finally {
+                state.loading = false;
+                render();
+            }
+        }
+
+        async function handleGoalSubmit() {
+            const timestamp = new Date().toLocaleString('vi-VN');
+            
+            // Sheet 1: Test Results - Kết quả bài test
+            const testData = {
+                Timestamp: timestamp,
+                Name: state.careerGoals.name,
+                Class: state.careerGoals.class,
+                R: state.results.scores.R,
+                I: state.results.scores.I,
+                A: state.results.scores.A,
+                S: state.results.scores.S,
+                E: state.results.scores.E,
+                C: state.results.scores.C,
+                RIASECCode: state.results.riasecCode,
+                TopCategory: categoryInfo[state.results.topCategory].name,
+                CareerMatch: state.results.careerMatch ? state.results.careerMatch.title : 'Không xác định'
+            };
+            
+            // Sheet 2: Career Goals - Mục tiêu nghề nghiệp
+            const goalsData = {
+                Timestamp: timestamp,
+                Name: state.careerGoals.name,
+                Class: state.careerGoals.class,
+                School: state.careerGoals.school,
+                TestDate: state.careerGoals.testDate,
+                RIASECTop: state.careerGoals.riasecTop.join(', '),
+                Personality: state.careerGoals.personality.join(', '),
+                FavoriteSubjects: state.careerGoals.favoriteSubjects,
+                Activities: state.careerGoals.activities,
+                CareerInterest: state.careerGoals.careerInterest,
+                WhyChoose: state.careerGoals.whyChoose.join(', '),
+                WhyChooseOther: state.careerGoals.whyChooseOther || '',
+                Strengths: state.careerGoals.strengths,
+                Improvements: state.careerGoals.improvements,
+                ActionDate: state.careerGoals.actionDate,
+                ProudMoment: state.careerGoals.proudMoment,
+                ParentEmail: state.careerGoals.parentEmail || ''
+            };
+
+            console.log('=== DỮ LIỆU GỬI LÊN GOOGLE SHEETS ===');
+            console.log('Test Results:', testData);
+            console.log('Career Goals:', goalsData);
+
+            const testSaved = await saveToGoogleSheets(testData, 'Test Results');
+            const goalsSaved = await saveToGoogleSheets(goalsData, 'Career Goals');
+
+            if (testSaved && goalsSaved) {
+                alert('✅ Đã lưu thành công!\n\nDữ liệu đã được lưu vào Google Sheets.');
+                state.page = 'intro';
+                state.answers = {};
+                state.results = null;
+                state.careerGoals = { 
+                    name: '', class: '', school: '', testDate: '', 
+                    riasecTop: [], personality: [], favoriteSubjects: '', activities: '', 
+                    careerInterest: '', whyChoose: [], whyChooseOther: '', 
+                    strengths: '', improvements: '', actionDate: '', proudMoment: '', 
+                    parentEmail: '' 
+                };
+                render();
+            }
+        }
+
+        function isAllAnswered() {
+            return questions.every(q => state.answers[q.id] !== undefined);
+        }
+
+        function isFormValid() {
+            const valid = state.careerGoals.name.trim() !== '' && 
+                         state.careerGoals.class.trim() !== '' && 
+                         state.careerGoals.school.trim() !== '' &&
+                         state.careerGoals.testDate.trim() !== '' &&
+                         state.careerGoals.riasecTop.length > 0 &&
+                         state.careerGoals.personality.length > 0 &&
+                         state.careerGoals.favoriteSubjects.trim() !== '' &&
+                         state.careerGoals.activities.trim() !== '' &&
+                         state.careerGoals.careerInterest.trim() !== '' &&
+                         state.careerGoals.whyChoose.length > 0 &&
+                         state.careerGoals.strengths.trim() !== '' &&
+                         state.careerGoals.improvements.trim() !== '' &&
+                         state.careerGoals.actionDate.trim() !== '' &&
+                         state.careerGoals.proudMoment.trim() !== '';
+            console.log('Form valid check:', valid, state.careerGoals);
+            return valid;
+        }
+
+        function render() {
+            const root = document.getElementById('root');
+            
+            if (state.page === 'intro') {
+                root.innerHTML = `
+                    <div class="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 relative overflow-hidden">
+                        <div class="absolute inset-0">
+                            <div class="absolute top-20 left-10 w-72 h-72 bg-purple-500 rounded-full mix-blend-multiply filter blur-xl opacity-20 animate-pulse"></div>
+                        </div>
+                        <div class="relative z-10 min-h-screen flex items-center justify-center p-4">
+                            <div class="max-w-4xl w-full">
+                                <div class="text-center mb-12">
+                                    <h1 class="text-5xl md:text-7xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 mb-4">RIASEC</h1>
+                                    <h2 class="text-2xl md:text-3xl font-bold text-white mb-3">Trắc nghiệm Hướng nghiệp</h2>
+                                    <p class="text-xl text-purple-200 mb-6">Khám phá con đường sự nghiệp của bạn</p>
+                                    <div class="bg-white/10 backdrop-blur-sm rounded-xl p-4 max-w-2xl mx-auto">
+                                        <p class="text-white text-sm">
+                                            ⭐ Đánh giá mức độ yêu thích của bạn với mỗi hoạt động<br>
+                                            📊 Hệ thống sẽ phân tích và đưa ra định hướng nghề nghiệp phù hợp
+                                        </p>
+                                    </div>
+                                </div>
+                                <div class="bg-white/10 backdrop-blur-xl rounded-3xl border border-white/20 p-8">
+                                    <button onclick="state.page='test'; render();" class="w-full bg-gradient-to-r from-purple-500 via-pink-500 to-blue-500 hover:from-purple-600 hover:via-pink-600 hover:to-blue-600 text-white font-bold py-5 px-8 rounded-2xl text-xl transition-all shadow-2xl">
+                                        Bắt đầu khám phá →
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else if (state.page === 'test') {
+                const progress = (Object.keys(state.answers).length / questions.length) * 100;
+                const questionsHTML = questions.map(q => {
+                    const isAnswered = state.answers[q.id] !== undefined;
+                    const cardClass = 'bg-white/10 backdrop-blur-xl rounded-2xl border p-6 transition-all ' + (isAnswered ? 'border-green-400/50 shadow-lg' : 'border-white/20');
+                    
+                    const optionsHTML = likertScale.map(option => {
+                        const isSelected = state.answers[q.id] === option.value;
+                        const btnClass = 'likert-option flex-1 py-3 px-2 rounded-xl font-semibold text-xs transition-all ' + 
+                            (isSelected ? 'bg-gradient-to-r ' + option.color + ' text-white shadow-lg scale-105' : 'bg-white/10 text-white hover:bg-white/20 border border-white/20');
+                        
+                        return `
+                            <button onclick="handleAnswer(${q.id}, ${option.value})" class="${btnClass}">
+                                <div class="text-sm">${option.label}</div>
+                            </button>
+                        `;
+                    }).join('');
+                    
+                    return `
+                        <div class="${cardClass}">
+                            <p class="text-white font-medium mb-4">
+                                <span class="text-purple-400 font-bold">Câu ${q.id}:</span> ${q.text}
+                            </p>
+                            <div class="mb-3">
+                                <div class="flex justify-between text-xs text-purple-200 mb-2">
+                                    <span>Rất không thích</span>
+                                    <span>Rất thích</span>
+                                </div>
+                                <div class="flex gap-2">
+                                    ${optionsHTML}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                root.innerHTML = `
+                    <div class="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-4 py-8">
+                        <div class="max-w-4xl mx-auto">
+                            <div class="bg-white/10 backdrop-blur-xl rounded-3xl border border-white/20 p-6 mb-6 sticky top-4 z-10">
+                                <div class="flex items-center justify-between mb-4">
+                                    <h2 class="text-2xl font-bold text-white">Bài trắc nghiệm</h2>
+                                    <div class="text-right">
+                                        <div class="text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-pink-400">
+                                            ${Object.keys(state.answers).length}/${questions.length}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="w-full bg-white/10 rounded-full h-3">
+                                    <div class="h-3 bg-gradient-to-r from-purple-500 via-pink-500 to-blue-500 rounded-full transition-all" style="width: ${progress}%"></div>
+                                </div>
+                                <p class="text-center text-purple-200 text-sm mt-2">${progress.toFixed(0)}% hoàn thành</p>
+                            </div>
+                            <div class="space-y-4">
+                                ${questionsHTML}
+                            </div>
+                            <div class="sticky bottom-4 mt-8">
+                                <button 
+                                    onclick="${isAllAnswered() ? 'calculateResults()' : ''}" 
+                                    ${!isAllAnswered() ? 'disabled' : ''}
+                                    class="w-full py-5 rounded-2xl text-xl font-bold flex items-center justify-center gap-3 ${isAllAnswered() ? 'bg-gradient-to-r from-purple-500 via-pink-500 to-blue-500 text-white shadow-2xl cursor-pointer hover:scale-105 transition-all' : 'bg-white/10 text-gray-400 cursor-not-allowed'}"
+                                >
+                                    ${isAllAnswered() ? '✨ Xem kết quả' : '⏳ Vui lòng trả lời tất cả câu hỏi'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else if (state.page === 'results') {
+                // Tìm điểm cao nhất để scale biểu đồ - FIXED
+                const maxScore = Math.max(...state.results.chartData.map(item => item.score));
+                
+                const barsHTML = state.results.chartData.map(item => {
+                    // Tính chiều cao CHÍNH XÁC dựa trên điểm số
+                    // Container height = 400px - 40px (padding) - 60px (text) = 300px available
+                    const availableHeight = 300;
+                    let barHeight;
+                    
+                    if (maxScore === 0) {
+                        barHeight = 0;
+                    } else {
+                        // Công thức: (điểm / điểm_max) × chiều cao khả dụng
+                        barHeight = (item.score / maxScore) * availableHeight;
+                        // Đảm bảo cột có điểm = 0 vẫn hiển thị một chút
+                        if (barHeight < 30 && item.score > 0) {
+                            barHeight = 30;
+                        }
+                    }
+                    
+                    return `
+                    <div class="bar-item">
+                        <div class="bar" style="--bar-color: ${item.color}; --bar-color-dark: ${item.colorDark}; height: ${barHeight}px;">
+                            ${item.score}
+                        </div>
+                        <div class="text-center" style="flex-shrink: 0;">
+                            <div class="text-white text-sm font-bold">${item.name}</div>
+                            <div class="text-purple-200 text-xs">${item.percentage}%</div>
+                        </div>
+                    </div>
+                `;
+                }).join('');
+
+                const top3HTML = state.results.top3Categories.map((item, idx) => {
+                    const cat = item[0];
+                    const score = item[1];
+                    const badge = idx === 0 ? '🥇' : idx === 1 ? '🥈' : '🥉';
+                    return `
+                        <div class="bg-white/5 rounded-xl p-4 border border-white/10">
+                            <div class="flex items-center gap-3 mb-2">
+                                <span class="text-3xl">${badge}</span>
+                                <div>
+                                    <div class="text-white font-bold">${categoryInfo[cat].shortName}</div>
+                                    <div class="text-purple-200 text-sm">${score}/25 điểm (${state.results.percentageScores[cat]}%)</div>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                const careerMatchHTML = state.results.careerMatch ? `
+                    <div class="bg-gradient-to-r from-yellow-500/20 to-orange-500/20 backdrop-blur-xl rounded-3xl border border-yellow-400/30 p-8 mb-8">
+                        <div class="flex items-start gap-4">
+                            <div class="text-5xl">🎯</div>
+                            <div class="flex-1">
+                                <h4 class="text-2xl font-bold text-white mb-3">Định hướng nghề nghiệp của bạn</h4>
+                                <div class="bg-white/10 rounded-xl p-4 mb-4">
+                                    <div class="text-yellow-300 font-bold text-lg mb-2">Mã RIASEC: ${state.results.riasecCode}</div>
+                                    <div class="text-white text-xl font-bold mb-2">${state.results.careerMatch.title}</div>
+                                    <div class="text-purple-100">${state.results.careerMatch.desc}</div>
+                                </div>
+                                <p class="text-white leading-relaxed">
+                                    Tổ hợp tính cách <strong class="text-yellow-300">${state.results.riasecCode}</strong> của bạn cho thấy bạn phù hợp với nhóm ngành nghề trên. 
+                                    Hãy tìm hiểu thêm và rèn luyện các kỹ năng cần thiết để phát triển trong lĩnh vực này!
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                ` : '';
+
+                root.innerHTML = `
+                    <div class="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-4 py-8">
+                        <div class="max-w-6xl mx-auto">
+                            <div class="text-center mb-10">
+                                <h2 class="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-400 via-pink-400 to-blue-400 mb-2">Kết quả của bạn</h2>
+                                <p class="text-purple-200">Phân tích tính cách và định hướng nghề nghiệp</p>
+                            </div>
+
+                            <div class="bg-gradient-to-br from-purple-500/20 via-pink-500/20 to-blue-500/20 backdrop-blur-xl rounded-3xl border border-purple-400/30 p-8 mb-8">
+                                <div class="text-center mb-6">
+                                    <div class="text-6xl mb-4">${categoryInfo[state.results.topCategory].icon}</div>
+                                    <h3 class="text-3xl font-black text-white mb-2">${categoryInfo[state.results.topCategory].name}</h3>
+                                    <div class="inline-block bg-white/20 rounded-full px-6 py-2">
+                                        <span class="text-2xl font-bold text-white">${state.results.topScore}/25 điểm (${state.results.percentageScores[state.results.topCategory]}%)</span>
+                                    </div>
+                                </div>
+                                <p class="text-white text-lg text-center mb-6">${categoryInfo[state.results.topCategory].description}</p>
+                                
+                                <div class="bg-white/10 rounded-2xl p-6">
+                                    <h4 class="text-purple-200 font-semibold text-center mb-4">Top 3 nhóm tính cách của bạn:</h4>
+                                    <div class="grid md:grid-cols-3 gap-4">
+                                        ${top3HTML}
+                                    </div>
+                                </div>
+                            </div>
+
+                            ${careerMatchHTML}
+
+                            <div class="bg-white/10 backdrop-blur-xl rounded-3xl border border-white/20 p-6 mb-8">
+                                <h3 class="text-xl font-bold text-white mb-6 text-center">📊 Biểu đồ phân tích chi tiết</h3>
+                                <div class="bar-chart">
+                                    ${barsHTML}
+                                </div>
+                                <div class="mt-6 text-center text-purple-200 text-sm">
+                                    Điểm số tối đa mỗi nhóm: 25 điểm (5 câu × 5 điểm)
+                                </div>
+                            </div>
+
+                            <div class="bg-gradient-to-r from-blue-500/20 to-cyan-500/20 backdrop-blur-xl rounded-3xl border border-blue-400/30 p-8 mb-8">
+                                <div class="flex items-start gap-4">
+                                    <div class="text-4xl">${categoryInfo[state.results.topCategory].icon}</div>
+                                    <div class="flex-1">
+                                        <h4 class="text-2xl font-bold text-white mb-4">📚 Lời khuyên từ chuyên gia - ${categoryInfo[state.results.topCategory].name}</h4>
+                                        
+                                        <div class="bg-white/10 rounded-xl p-5 mb-4">
+                                            <h5 class="text-blue-300 font-bold text-lg mb-2">Tổng quan:</h5>
+                                            <p class="text-white leading-relaxed">${categoryInfo[state.results.topCategory].description}</p>
+                                        </div>
+
+                                        <div class="bg-white/10 rounded-xl p-5 mb-4">
+                                            <h5 class="text-blue-300 font-bold text-lg mb-3">Lời khuyên từ chuyên gia:</h5>
+                                            <ul class="space-y-2">
+                                                ${categoryInfo[state.results.topCategory].advice.map(advice => 
+                                                    `<li class="text-white leading-relaxed flex items-start gap-2">
+                                                        <span class="text-blue-400 mt-1">•</span>
+                                                        <span>${advice}</span>
+                                                    </li>`
+                                                ).join('')}
+                                            </ul>
+                                        </div>
+
+                                        <div class="bg-white/10 rounded-xl p-5">
+                                            <h5 class="text-blue-300 font-bold text-lg mb-2">Nghề nghiệp phù hợp:</h5>
+                                            <p class="text-white leading-relaxed">${categoryInfo[state.results.topCategory].careers}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <button onclick="state.page='goals'; render();" class="w-full bg-gradient-to-r from-purple-500 via-pink-500 to-blue-500 hover:from-purple-600 hover:via-pink-600 hover:to-blue-600 text-white font-bold py-5 rounded-2xl text-xl shadow-2xl transition-all hover:scale-105">
+                                🎯 Lập mục tiêu nghề nghiệp →
+                            </button>
+                        </div>
+                    </div>
+                `;
+            } else if (state.page === 'goals') {
+                const updateButton = () => {
+                    const btn = document.getElementById('submitBtn');
+                    if (btn) {
+                        const valid = isFormValid();
+                        btn.disabled = !valid || state.loading;
+                        btn.className = 'w-full py-5 rounded-2xl text-xl font-bold flex items-center justify-center gap-3 transition-all ' + 
+                            (valid && !state.loading ? 'bg-gradient-to-r from-green-500 via-emerald-500 to-teal-500 text-white shadow-2xl cursor-pointer hover:scale-105' : 'bg-white/10 text-gray-400 cursor-not-allowed');
+                        btn.innerHTML = state.loading ? '⏳ Đang lưu dữ liệu...' : valid ? '✅ Hoàn thành và gửi' : '⚠️ Vui lòng điền đầy đủ thông tin bắt buộc';
+                    }
+                };
+
+                const personalityTraits = [
+                    'Sáng tạo', 'Tỉ mỉ', 'Kỷ luật', 'Lý luận', 'Tình cảm', 'Khám phá', 
+                    'Lãnh đạo', 'Hợp tác', 'Kỹ thuật', 'Hướng ngoại', 'Nhẫn nại', 
+                    'Tò mò học hỏi', 'Năng động', 'Hỗ trợ người khác', 'Khéo tay', 'Thích công nghệ'
+                ];
+
+                const whyChooseOptions = [
+                    'Sở thích phù hợp', 'Năng lực/điểm mạnh phù hợp', 'Tính cách phù hợp',
+                    'Thu nhập cao', 'Cơ hội việc làm', 'Ảnh hưởng gia đình', 'Truyền thông/mạng xã hội'
+                ];
+                
+                root.innerHTML = `
+                    <div class="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-4 py-8">
+                        <div class="max-w-3xl mx-auto">
+                            <div class="text-center mb-10">
+                                <h2 class="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-r from-green-400 via-emerald-400 to-teal-400 mb-2">Mục tiêu nghề nghiệp của tôi</h2>
+                                <p class="text-purple-200">Hiểu mình, chọn nghề</p>
+                            </div>
+
+                            <!-- I. Thông tin cá nhân -->
+                            <div class="bg-white/10 backdrop-blur-xl rounded-3xl border border-white/20 p-8 mb-6">
+                                <h3 class="text-2xl font-bold text-white mb-6">📝 I. Thông tin cá nhân</h3>
+                                <div class="space-y-5">
+                                    <div>
+                                        <label class="block text-white font-semibold mb-2">👤 Họ và tên <span class="text-pink-400">*</span></label>
+                                        <input id="nameInput" type="text" value="${state.careerGoals.name}" 
+                                            class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-purple-300 focus:ring-2 focus:ring-purple-500 focus:outline-none" 
+                                            placeholder="Nhập họ tên của bạn" />
+                                    </div>
+                                    <div class="grid md:grid-cols-2 gap-4">
+                                        <div>
+                                            <label class="block text-white font-semibold mb-2">🏫 Lớp <span class="text-pink-400">*</span></label>
+                                            <input id="classInput" type="text" value="${state.careerGoals.class}" 
+                                                class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-purple-300 focus:ring-2 focus:ring-purple-500 focus:outline-none" 
+                                                placeholder="Ví dụ: 9A1" />
+                                        </div>
+                                        <div>
+                                            <label class="block text-white font-semibold mb-2">🏢 Trường <span class="text-pink-400">*</span></label>
+                                            <input id="schoolInput" type="text" value="${state.careerGoals.school}" 
+                                                class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-purple-300 focus:ring-2 focus:ring-purple-500 focus:outline-none" 
+                                                placeholder="Tên trường" />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label class="block text-white font-semibold mb-2">📅 Ngày thực hiện bài này <span class="text-pink-400">*</span></label>
+                                        <input id="testDateInput" type="date" value="${state.careerGoals.testDate}" 
+                                            class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white focus:ring-2 focus:ring-purple-500 focus:outline-none" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- II. Kết quả khám phá -->
+                            <div class="bg-white/10 backdrop-blur-xl rounded-3xl border border-white/20 p-8 mb-6">
+                                <h3 class="text-2xl font-bold text-white mb-6">🔍 II. Kết quả khám phá của bản thân</h3>
+                                <div class="space-y-5">
+                                    <div>
+                                        <label class="block text-white font-semibold mb-3">Nhóm RIASEC nổi trội của em <span class="text-pink-400">*</span></label>
+                                        <div class="grid grid-cols-3 md:grid-cols-6 gap-3">
+                                            ${['R', 'I', 'A', 'S', 'E', 'C'].map(cat => `
+                                                <label class="flex items-center gap-2 bg-white/5 p-3 rounded-lg cursor-pointer hover:bg-white/10 transition-all">
+                                                    <input type="checkbox" class="riasec-checkbox w-4 h-4 accent-purple-500" value="${cat}" 
+                                                        ${state.careerGoals.riasecTop.includes(cat) ? 'checked' : ''} />
+                                                    <span class="text-white text-sm font-semibold">${cat}</span>
+                                                </label>
+                                            `).join('')}
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-white font-semibold mb-3">Tính từ mô tả bản thân (tối đa 5) <span class="text-pink-400">*</span></label>
+                                        <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
+                                            ${personalityTraits.map(trait => `
+                                                <label class="flex items-center gap-2 bg-white/5 p-2 rounded-lg cursor-pointer hover:bg-white/10 transition-all text-sm">
+                                                    <input type="checkbox" class="personality-checkbox w-4 h-4 accent-purple-500" value="${trait}" 
+                                                        ${state.careerGoals.personality.includes(trait) ? 'checked' : ''} />
+                                                    <span class="text-white">${trait}</span>
+                                                </label>
+                                            `).join('')}
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-white font-semibold mb-2">📚 Ba môn học em thích nhất <span class="text-pink-400">*</span></label>
+                                        <textarea id="subjectsInput" rows="2" 
+                                            class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-purple-300 resize-none focus:ring-2 focus:ring-purple-500 focus:outline-none" 
+                                            placeholder="Ví dụ: Toán, Văn, Tiếng Anh">${state.careerGoals.favoriteSubjects}</textarea>
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-white font-semibold mb-2">🎯 Những hoạt động em thích làm <span class="text-pink-400">*</span></label>
+                                        <textarea id="activitiesInput" rows="3" 
+                                            class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-purple-300 resize-none focus:ring-2 focus:ring-purple-500 focus:outline-none" 
+                                            placeholder="VD: làm video, sửa máy móc, nấu ăn, thuyết trình, vẽ tranh, giải câu đố, chăm sóc người khác...">${state.careerGoals.activities}</textarea>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- III. Nghề nghiệp quan tâm -->
+                            <div class="bg-white/10 backdrop-blur-xl rounded-3xl border border-white/20 p-8 mb-6">
+                                <h3 class="text-2xl font-bold text-white mb-6">💼 III. Nghề nghiệp quan tâm</h3>
+                                <div class="space-y-5">
+                                    <div>
+                                        <label class="block text-white font-semibold mb-2">Nghề hoặc lĩnh vực em đang quan tâm <span class="text-pink-400">*</span></label>
+                                        <input id="careerInput" type="text" value="${state.careerGoals.careerInterest}" 
+                                            class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-purple-300 focus:ring-2 focus:ring-purple-500 focus:outline-none" 
+                                            placeholder="VD: Nhà thiết kế đồ họa, Y tá, Lập trình web, Giáo viên mầm non..." />
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-white font-semibold mb-3">Vì sao bạn chọn nghề này? (tối đa 3) <span class="text-pink-400">*</span></label>
+                                        <div class="space-y-2">
+                                            ${whyChooseOptions.map(option => `
+                                                <label class="flex items-center gap-2 bg-white/5 p-3 rounded-lg cursor-pointer hover:bg-white/10 transition-all">
+                                                    <input type="checkbox" class="why-checkbox w-4 h-4 accent-purple-500" value="${option}" 
+                                                        ${state.careerGoals.whyChoose.includes(option) ? 'checked' : ''} />
+                                                    <span class="text-white">${option}</span>
+                                                </label>
+                                            `).join('')}
+                                            <label class="flex items-start gap-2 bg-white/5 p-3 rounded-lg">
+                                                <input type="checkbox" class="why-checkbox w-4 h-4 accent-purple-500 mt-1" value="Khác" 
+                                                    ${state.careerGoals.whyChoose.includes('Khác') ? 'checked' : ''} />
+                                                <div class="flex-1">
+                                                    <span class="text-white">Khác:</span>
+                                                    <input id="whyOtherInput" type="text" value="${state.careerGoals.whyChooseOther}" 
+                                                        class="w-full mt-2 px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-purple-300 focus:ring-2 focus:ring-purple-500 focus:outline-none text-sm" 
+                                                        placeholder="Mô tả lý do khác..." />
+                                                </div>
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-white font-semibold mb-2">💪 Những điểm mạnh giúp em theo nghề đó <span class="text-pink-400">*</span></label>
+                                        <textarea id="strengthsInput" rows="3" 
+                                            class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-purple-300 resize-none focus:ring-2 focus:ring-purple-500 focus:outline-none" 
+                                            placeholder="Mô tả các điểm mạnh của bạn...">${state.careerGoals.strengths}</textarea>
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-white font-semibold mb-2">📈 Những điểm em cần cải thiện <span class="text-pink-400">*</span></label>
+                                        <textarea id="improvementsInput" rows="3" 
+                                            class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-purple-300 resize-none focus:ring-2 focus:ring-purple-500 focus:outline-none" 
+                                            placeholder="Những kỹ năng hoặc kiến thức cần phát triển...">${state.careerGoals.improvements}</textarea>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- IV. Kế hoạch tương lai -->
+                            <div class="bg-white/10 backdrop-blur-xl rounded-3xl border border-white/20 p-8 mb-6">
+                                <h3 class="text-2xl font-bold text-white mb-6">🚀 IV. Kế hoạch trong tương lai</h3>
+                                <div class="space-y-5">
+                                    <div>
+                                        <label class="block text-white font-semibold mb-2">📅 Em sẽ bắt đầu hành động đầu tiên vào ngày <span class="text-pink-400">*</span></label>
+                                        <input id="actionDateInput" type="date" value="${state.careerGoals.actionDate}" 
+                                            class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white focus:ring-2 focus:ring-purple-500 focus:outline-none" />
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-white font-semibold mb-2">⭐ "Nếu 5 năm nữa nhìn lại, điều gì khiến em tự hào nhất?" <span class="text-pink-400">*</span></label>
+                                        <textarea id="proudInput" rows="4" 
+                                            class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-purple-300 resize-none focus:ring-2 focus:ring-purple-500 focus:outline-none" 
+                                            placeholder="Hãy tưởng tượng và viết ra điều bạn mong muốn đạt được...">${state.careerGoals.proudMoment}</textarea>
+                                    </div>
+
+                                    <div>
+                                        <label class="block text-white font-semibold mb-2">📧 Email liên hệ phụ huynh (không bắt buộc)</label>
+                                        <input id="emailInput" type="email" value="${state.careerGoals.parentEmail}" 
+                                            class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-purple-300 focus:ring-2 focus:ring-purple-500 focus:outline-none" 
+                                            placeholder="email@example.com" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <button id="submitBtn" class="w-full py-5 rounded-2xl text-xl font-bold flex items-center justify-center gap-3 transition-all bg-white/10 text-gray-400 cursor-not-allowed">
+                                ⚠️ Vui lòng điền đầy đủ thông tin bắt buộc
+                            </button>
+                        </div>
+                    </div>
+                `;
+
+                // Gắn event listeners SAU KHI render
+                document.getElementById('nameInput').addEventListener('input', (e) => {
+                    updateCareerGoal('name', e.target.value);
+                    updateButton();
+                });
+                document.getElementById('classInput').addEventListener('input', (e) => {
+                    updateCareerGoal('class', e.target.value);
+                    updateButton();
+                });
+                document.getElementById('schoolInput').addEventListener('input', (e) => {
+                    updateCareerGoal('school', e.target.value);
+                    updateButton();
+                });
+                document.getElementById('testDateInput').addEventListener('input', (e) => {
+                    updateCareerGoal('testDate', e.target.value);
+                    updateButton();
+                });
+
+                // RIASEC checkboxes
+                document.querySelectorAll('.riasec-checkbox').forEach(checkbox => {
+                    checkbox.addEventListener('change', (e) => {
+                        if (e.target.checked) {
+                            state.careerGoals.riasecTop.push(e.target.value);
+                        } else {
+                            state.careerGoals.riasecTop = state.careerGoals.riasecTop.filter(v => v !== e.target.value);
+                        }
+                        updateButton();
+                    });
+                });
+
+                // Personality checkboxes (max 5)
+                document.querySelectorAll('.personality-checkbox').forEach(checkbox => {
+                    checkbox.addEventListener('change', (e) => {
+                        if (e.target.checked) {
+                            if (state.careerGoals.personality.length < 5) {
+                                state.careerGoals.personality.push(e.target.value);
+                            } else {
+                                e.target.checked = false;
+                                alert('Chỉ được chọn tối đa 5 tính từ!');
+                            }
+                        } else {
+                            state.careerGoals.personality = state.careerGoals.personality.filter(v => v !== e.target.value);
+                        }
+                        updateButton();
+                    });
+                });
+
+                document.getElementById('subjectsInput').addEventListener('input', (e) => {
+                    updateCareerGoal('favoriteSubjects', e.target.value);
+                    updateButton();
+                });
+                document.getElementById('activitiesInput').addEventListener('input', (e) => {
+                    updateCareerGoal('activities', e.target.value);
+                    updateButton();
+                });
+                document.getElementById('careerInput').addEventListener('input', (e) => {
+                    updateCareerGoal('careerInterest', e.target.value);
+                    updateButton();
+                });
+
+                // Why choose checkboxes (max 3)
+                document.querySelectorAll('.why-checkbox').forEach(checkbox => {
+                    checkbox.addEventListener('change', (e) => {
+                        if (e.target.checked) {
+                            if (state.careerGoals.whyChoose.length < 3) {
+                                state.careerGoals.whyChoose.push(e.target.value);
+                            } else {
+                                e.target.checked = false;
+                                alert('Chỉ được chọn tối đa 3 lý do!');
+                            }
+                        } else {
+                            state.careerGoals.whyChoose = state.careerGoals.whyChoose.filter(v => v !== e.target.value);
+                        }
+                        updateButton();
+                    });
+                });
+
+                document.getElementById('whyOtherInput').addEventListener('input', (e) => {
+                    updateCareerGoal('whyChooseOther', e.target.value);
+                    updateButton();
+                });
+                document.getElementById('strengthsInput').addEventListener('input', (e) => {
+                    updateCareerGoal('strengths', e.target.value);
+                    updateButton();
+                });
+                document.getElementById('improvementsInput').addEventListener('input', (e) => {
+                    updateCareerGoal('improvements', e.target.value);
+                    updateButton();
+                });
+                document.getElementById('actionDateInput').addEventListener('input', (e) => {
+                    updateCareerGoal('actionDate', e.target.value);
+                    updateButton();
+                });
+                document.getElementById('proudInput').addEventListener('input', (e) => {
+                    updateCareerGoal('proudMoment', e.target.value);
+                    updateButton();
+                });
+                document.getElementById('emailInput').addEventListener('input', (e) => {
+                    updateCareerGoal('parentEmail', e.target.value);
+                    updateButton();
+                });
+                
+                document.getElementById('submitBtn').addEventListener('click', () => {
+                    if (isFormValid() && !state.loading) {
+                        handleGoalSubmit();
+                    }
+                });
+
+                updateButton();
+            }
+        }
+
+        render();
+    </script>
+</body>
+</html>
