@@ -49,6 +49,14 @@
         .likert-option:hover {
             transform: scale(1.05);
         }
+
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -94,7 +102,18 @@
         const questions = [
             { id: 1, text: "Tôi thích làm việc với máy móc, dụng cụ, sửa chữa đồ vật.", category: "R" },
             { id: 2, text: "Tôi thích tham gia các hoạt động ngoài trời, thể thao, kỹ thuật thực hành.", category: "R" },
-            { id: 3, text: "Tôi vui khi lắp ráp đồ chơi, mô hình, hoặc sửa đồ trong nhà.", category: "R" },
+            { 
+                id: 3, 
+                text: "Tôi vui khi tham gia lắp ráp đồ chơi, mô hình, hoặc sửa đồ trong nhà.", 
+                category: "R",
+                customOptions: [
+                    { value: 1, label: "Rất không vui" },
+                    { value: 2, label: "Không vui" },
+                    { value: 3, label: "Bình thường" },
+                    { value: 4, label: "Vui" },
+                    { value: 5, label: "Rất vui" }
+                ]
+            },
             { id: 4, text: "Tôi hứng thú với nghề nghiệp cần kỹ năng thực hành (thợ, kỹ sư).", category: "R" },
             { id: 5, text: "Tôi thích khám phá công cụ kỹ thuật mới (điện, máy, robot).", category: "R" },
             
@@ -102,30 +121,129 @@
             { id: 7, text: "Tôi thích đọc sách khoa học, làm thí nghiệm nhỏ để khám phá.", category: "I" },
             { id: 8, text: "Tôi thích suy nghĩ, phân tích, tìm lời giải cho vấn đề.", category: "I" },
             { id: 9, text: "Tôi thích nghiên cứu, đặt câu hỏi 'tại sao' và tìm bằng chứng.", category: "I" },
-            { id: 10, text: "Tôi tò mò về cách mọi thứ hoạt động và muốn tìm hiểu sâu hơn.", category: "I" },
+            { 
+                id: 10, 
+                text: "Tôi tò mò về cách mọi thứ hoạt động và muốn tìm hiểu sâu hơn.", 
+                category: "I",
+                customOptions: [
+                    { value: 1, label: "Rất không tò mò" },
+                    { value: 2, label: "Không tò mò" },
+                    { value: 3, label: "Bình thường" },
+                    { value: 4, label: "Tò mò" },
+                    { value: 5, label: "Rất tò mò" }
+                ]
+            },
             
             { id: 11, text: "Tôi thích vẽ, làm đồ thủ công, thiết kế sáng tạo.", category: "A" },
-            { id: 12, text: "Tôi cảm thấy vui khi tạo ra bức tranh, bài hát hoặc câu chuyện.", category: "A" },
+            { 
+                id: 12, 
+                text: "Tôi cảm thấy vui khi tạo ra một bức tranh, bài hát hoặc câu chuyện.", 
+                category: "A",
+                customOptions: [
+                    { value: 1, label: "Rất không vui" },
+                    { value: 2, label: "Không vui" },
+                    { value: 3, label: "Bình thường" },
+                    { value: 4, label: "Vui" },
+                    { value: 5, label: "Rất vui" }
+                ]
+            },
             { id: 13, text: "Tôi muốn làm những việc liên quan đến nghệ thuật, sân khấu.", category: "A" },
             { id: 14, text: "Tôi thích thiết kế trang trí, phối màu, sáng tạo hình ảnh.", category: "A" },
             { id: 15, text: "Tôi muốn thử làm sản phẩm thủ công để trưng bày.", category: "A" },
             
             { id: 16, text: "Tôi thích hướng dẫn và giúp đỡ bạn bè khi họ học.", category: "S" },
             { id: 17, text: "Tôi thích làm việc nhóm để chăm sóc, hỗ trợ người khác.", category: "S" },
-            { id: 18, text: "Tôi sẵn sàng lắng nghe và tư vấn khi người khác gặp khó khăn.", category: "S" },
+            { 
+                id: 18, 
+                text: "Tôi sẵn sàng lắng nghe và tư vấn khi người khác gặp khó khăn.", 
+                category: "S",
+                customOptions: [
+                    { value: 1, label: "Rất không sẵn sàng" },
+                    { value: 2, label: "Không sẵn sàng" },
+                    { value: 3, label: "Bình thường" },
+                    { value: 4, label: "Sẵn sàng" },
+                    { value: 5, label: "Rất sẵn sàng" }
+                ]
+            },
             { id: 19, text: "Tôi thích tham gia hoạt động cộng đồng, giúp trẻ nhỏ hoặc người già.", category: "S" },
             { id: 20, text: "Tôi thích trao đổi, lắng nghe và giải bài toán cuộc sống của người khác.", category: "S" },
             
             { id: 21, text: "Tôi thích thuyết trình, thuyết phục hoặc tổ chức sự kiện nhỏ.", category: "E" },
-            { id: 22, text: "Tôi muốn quản lý một dự án nhỏ hoặc bán hàng khi có dịp.", category: "E" },
-            { id: 23, text: "Tôi hay có ý tưởng bắt đầu một hoạt động hoặc dự án nhỏ.", category: "E" },
-            { id: 24, text: "Tôi tự tin khi phải thuyết phục mọi người làm theo ý mình.", category: "E" },
-            { id: 25, text: "Tôi có mong muốn thử lập một gian hàng hoặc bán sản phẩm nhỏ.", category: "E" },
+            { 
+                id: 22, 
+                text: "Tôi muốn quản lý một dự án nhỏ hoặc bán hàng khi có dịp.", 
+                category: "E",
+                customOptions: [
+                    { value: 1, label: "Không thích" },
+                    { value: 2, label: "Ít thích" },
+                    { value: 3, label: "Bình thường" },
+                    { value: 4, label: "Thích" },
+                    { value: 5, label: "Rất thích" }
+                ]
+            },
+            { 
+                id: 23, 
+                text: "Tôi hay có ý tưởng bắt đầu một hoạt động hoặc dự án nhỏ.", 
+                category: "E",
+                customOptions: [
+                    { value: 1, label: "Không có" },
+                    { value: 2, label: "Ít có" },
+                    { value: 3, label: "Bình thường" },
+                    { value: 4, label: "Có" },
+                    { value: 5, label: "Rất thường xuyên" }
+                ]
+            },
+            { 
+                id: 24, 
+                text: "Tôi tự tin khi phải thuyết phục mọi người làm theo ý mình.", 
+                category: "E",
+                customOptions: [
+                    { value: 1, label: "Rất không tự tin" },
+                    { value: 2, label: "Không tự tin" },
+                    { value: 3, label: "Bình thường" },
+                    { value: 4, label: "Tự tin" },
+                    { value: 5, label: "Rất tự tin" }
+                ]
+            },
+            { 
+                id: 25, 
+                text: "Tôi có mong muốn thử lập một gian hàng hoặc bán sản phẩm nhỏ.", 
+                category: "E",
+                customOptions: [
+                    { value: 1, label: "Rất không muốn" },
+                    { value: 2, label: "Không muốn" },
+                    { value: 3, label: "Bình thường" },
+                    { value: 4, label: "Muốn" },
+                    { value: 5, label: "Rất muốn" }
+                ]
+            },
             
             { id: 26, text: "Tôi thích làm việc theo quy tắc, sắp xếp giấy tờ hoặc lập danh sách.", category: "C" },
-            { id: 27, text: "Tôi cảm thấy an tâm khi công việc rõ ràng, có quy trình.", category: "C" },
+            { 
+                id: 27, 
+                text: "Tôi cảm thấy an tâm khi công việc rõ ràng, có quy trình.", 
+                category: "C",
+                customOptions: [
+                    { value: 1, label: "Không thích" },
+                    { value: 2, label: "Ít thích" },
+                    { value: 3, label: "Bình thường" },
+                    { value: 4, label: "Thích" },
+                    { value: 5, label: "Rất thích" }
+                ]
+            },
             { id: 28, text: "Tôi thích làm công việc cần độ chính xác và theo hướng dẫn chi tiết.", category: "C" },
-            { id: 29, text: "Tôi thích công việc hành chính, sổ sách, lưu trữ tài liệu.", category: "C" },
+            { 
+                id: 29, 
+                text: "Tôi hứng thú với nghề nghiệp cần kỹ năng thực hành (thợ, kỹ sư cơ bản).", 
+                category: "R",
+                customOptions: [
+                    { value: 1, label: "Không thích" },
+                    { value: 2, label: "Ít thích" },
+                    { value: 3, label: "Bình thường" },
+                    { value: 4, label: "Thích" },
+                    { value: 5, label: "Rất thích" }
+                ]
+            },
             { id: 30, text: "Tôi thích làm việc có trình tự, thực hiện theo danh sách công việc.", category: "C" }
         ];
 
@@ -376,7 +494,7 @@
             const goalsSaved = await saveToGoogleSheets(goalsData, 'Career Goals');
 
             if (testSaved && goalsSaved) {
-                alert('✅ Đã lưu thành công!\n\nDữ liệu đã được lưu vào Google Sheets.');
+                alert('✅ Đã hoàn thành!\n\nCâu trả lời của bạn đã được lưu lại.');
                 state.page = 'intro';
                 state.answers = {};
                 state.results = null;
@@ -451,14 +569,22 @@
                     const isAnswered = state.answers[q.id] !== undefined;
                     const cardClass = 'bg-white/10 backdrop-blur-xl rounded-2xl border p-6 transition-all ' + (isAnswered ? 'border-green-400/50 shadow-lg' : 'border-white/20');
                     
-                    const optionsHTML = likertScale.map(option => {
+                    const optionsToUse = q.customOptions || likertScale;
+                    const optionsHTML = optionsToUse.map(option => {
                         const isSelected = state.answers[q.id] === option.value;
-                        const btnClass = 'likert-option flex-1 py-3 px-2 rounded-xl font-semibold text-xs transition-all ' + 
-                            (isSelected ? 'bg-gradient-to-r ' + option.color + ' text-white shadow-lg scale-105' : 'bg-white/10 text-white hover:bg-white/20 border border-white/20');
+                        const colorOption = likertScale.find(o => o.value === option.value) || {};
+                        const btnClass = 'flex-1 min-w-0 px-2 py-3 rounded-xl font-medium text-xs transition-all transform whitespace-normal break-words flex items-center justify-center text-center ' + 
+                            (isSelected ? 
+                                (colorOption.color ? `bg-gradient-to-r ${colorOption.color}` : 'bg-gradient-to-r from-blue-500 to-blue-600') + 
+                                ' text-white shadow-lg scale-[1.02] font-semibold border-2 border-white/30' 
+                                : 'bg-white/5 text-white/90 hover:bg-white/10 hover:border-white/30 border border-white/10 hover:scale-[1.01]');
                         
                         return `
-                            <button onclick="handleAnswer(${q.id}, ${option.value})" class="${btnClass}">
-                                <div class="text-sm">${option.label}</div>
+                            <button 
+                                onclick="handleAnswer(${q.id}, ${option.value})" 
+                                class="${btnClass} transition-all duration-200 ease-in-out"
+                            >
+                                <div class="leading-snug">${option.label}</div>
                             </button>
                         `;
                     }).join('');
@@ -556,7 +682,10 @@
                             <div class="flex items-center gap-3 mb-2">
                                 <span class="text-3xl">${badge}</span>
                                 <div>
-                                    <div class="text-white font-bold">${categoryInfo[cat].shortName}</div>
+                                    <div class="flex items-center gap-2">
+                                        <span class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-white/15 border border-white/20 text-white font-black text-sm">${cat}</span>
+                                        <div class="text-white font-bold">${categoryInfo[cat].shortName}</div>
+                                    </div>
                                     <div class="text-purple-200 text-sm">${score}/25 điểm (${state.results.percentageScores[cat]}%)</div>
                                 </div>
                             </div>
@@ -728,9 +857,9 @@
                                 <div class="space-y-5">
                                     <div>
                                         <label class="block text-white font-semibold mb-3">Nhóm RIASEC nổi trội của em <span class="text-pink-400">*</span></label>
-                                        <div class="grid grid-cols-3 md:grid-cols-6 gap-3">
-                                            ${['R', 'I', 'A', 'S', 'E', 'C'].map(cat => `
-                                                <label class="flex items-center gap-2 bg-white/5 p-3 rounded-lg cursor-pointer hover:bg-white/10 transition-all">
+                                        <div class="flex flex-nowrap gap-3 overflow-x-auto hide-scrollbar pb-1">
+                                            ${['R: Thực tế', 'I: Nghiên cứu', 'A: Nghệ thuật', 'S: Xã hội', 'E: Quản lý', 'C: Quy tắc'].map(cat => `
+                                                <label class="flex items-center gap-2 bg-white/5 p-3 rounded-lg cursor-pointer hover:bg-white/10 transition-all flex-none whitespace-nowrap">
                                                     <input type="checkbox" class="riasec-checkbox w-4 h-4 accent-purple-500" value="${cat}" 
                                                         ${state.careerGoals.riasecTop.includes(cat) ? 'checked' : ''} />
                                                     <span class="text-white text-sm font-semibold">${cat}</span>
